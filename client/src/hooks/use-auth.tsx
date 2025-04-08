@@ -12,6 +12,7 @@ interface User {
   id: number;
   username: string;
   balance: number;
+  isAdmin: boolean;
 }
 
 type AuthContextType = {

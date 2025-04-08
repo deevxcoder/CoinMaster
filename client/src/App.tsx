@@ -12,7 +12,7 @@ import AdminPage from "@/pages/admin";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import { AuthProvider } from "@/hooks/use-auth";
-import { ProtectedRoute } from "@/lib/protected-route";
+import { ProtectedRoute, AdminProtectedRoute } from "@/lib/protected-route";
 
 function Router() {
   return (
@@ -30,7 +30,7 @@ function Router() {
                   <ProtectedRoute path="/coin-toss" component={CoinToss} />
                   <ProtectedRoute path="/odd-even" component={OddEven} />
                   <ProtectedRoute path="/deposit" component={DepositPage} />
-                  <ProtectedRoute path="/admin" component={AdminPage} />
+                  <AdminProtectedRoute path="/admin" component={AdminPage} />
                   <Route component={NotFound} />
                 </Switch>
               </div>

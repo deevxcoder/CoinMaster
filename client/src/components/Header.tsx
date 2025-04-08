@@ -35,8 +35,8 @@ export default function Header() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   
-  // For demo purposes, we'll consider user with ID 1 as admin
-  const isAdmin = user?.id === 1;
+  // Check if the user has admin privileges
+  const isAdmin = user?.isAdmin === true;
 
   const handleLogout = () => {
     logoutMutation.mutate(undefined, {

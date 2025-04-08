@@ -16,6 +16,7 @@ declare global {
       username: string;
       password: string;
       balance: number;
+      isAdmin: boolean;
     }
   }
 }
@@ -108,11 +109,15 @@ export function setupAuth(app: Express) {
 
       // Create new user
       const hashedPassword = await hashPassword(req.body.password);
+      // For demo purposes, set the user with username "admin" as admin
+      const isAdmin = req.body.username.toLowerCase() === "admin";
+      
       const [user] = await db
         .insert(users)
         .values({
           username: req.body.username,
           password: hashedPassword,
+          isAdmin: isAdmin,
         })
         .returning();
 
