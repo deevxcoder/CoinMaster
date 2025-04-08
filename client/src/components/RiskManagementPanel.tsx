@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -37,22 +37,30 @@ export default function RiskManagementPanel() {
     monthlyLossLimit: 10000,
     isActive: true
   });
-
-  // Mock data for initial display
-  const mockSettings: RiskSettings[] = [
-    {
-      id: 1,
-      type: 'global',
-      maxBetAmount: 1000,
-      dailyLossLimit: 2000,
-      weeklyLossLimit: 5000,
-      monthlyLossLimit: 10000,
-      isActive: true
-    }
-  ];
-
-  // Fetch risk settings (currently using mock data)
-  const { data: riskSettings, isLoading } = useQuery({
+  
+  // Create an object to store our mock data for each tab
+  const [mockData, setMockData] = useState<{
+    global: RiskSettings[];
+    game: RiskSettings[];
+    user: RiskSettings[];
+  }>({
+    global: [
+      {
+        id: 1,
+        type: 'global',
+        maxBetAmount: 1000,
+        dailyLossLimit: 2000,
+        weeklyLossLimit: 5000,
+        monthlyLossLimit: 10000,
+        isActive: true
+      }
+    ],
+    game: [],
+    user: []
+  });
+  
+  // Fetch risk settings (using our mock data store)
+  const { data: riskSettings, isLoading, refetch } = useQuery({
     queryKey: ['/api/risk-settings', activeTab],
     queryFn: async () => {
       // In a real implementation, this would be:
@@ -60,9 +68,16 @@ export default function RiskManagementPanel() {
       // if (!response.ok) throw new Error('Failed to fetch risk settings');
       // return response.json();
       console.log(`Fetching ${activeTab} risk settings`);
-      return mockSettings;
-    }
+      return mockData[activeTab];
+    },
+    // This ensures we refetch when changing tabs
+    enabled: true
   });
+  
+  // Update our query when tab changes
+  useEffect(() => {
+    refetch();
+  }, [activeTab, refetch]);
 
   // Create risk settings mutation
   const createMutation = useMutation({
@@ -71,14 +86,28 @@ export default function RiskManagementPanel() {
       // const res = await apiRequest('POST', '/api/risk-settings', settings);
       // return res.json();
       console.log('Creating settings:', settings);
-      return { id: Date.now(), ...settings };
+      
+      // Create new settings with ID
+      const newSettings = { 
+        id: Date.now(), 
+        ...settings
+      } as RiskSettings;
+      
+      // Update our mock data store
+      setMockData(prev => ({
+        ...prev,
+        [activeTab]: [...prev[activeTab], newSettings]
+      }));
+      
+      return newSettings;
     },
     onSuccess: () => {
       toast({
         title: 'Success',
         description: 'Risk settings created successfully',
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/risk-settings'] });
+      // Manually refetch since we're using mock data
+      refetch();
       resetForm();
     },
     onError: (error: Error) => {
@@ -97,14 +126,28 @@ export default function RiskManagementPanel() {
       // const res = await apiRequest('PATCH', `/api/risk-settings/${id}`, settings);
       // return res.json();
       console.log('Updating settings:', { id, ...settings });
-      return { id, ...settings };
+      
+      // Update our mock data store
+      setMockData(prev => {
+        return {
+          ...prev,
+          [activeTab]: prev[activeTab].map(item => 
+            item.id === id 
+              ? { ...item, ...settings } as RiskSettings
+              : item
+          )
+        };
+      });
+      
+      return { id, ...settings } as RiskSettings;
     },
     onSuccess: () => {
       toast({
         title: 'Success',
         description: 'Risk settings updated successfully',
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/risk-settings'] });
+      // Manually refetch since we're using mock data
+      refetch();
       resetForm();
     },
     onError: (error: Error) => {
@@ -350,7 +393,7 @@ export default function RiskManagementPanel() {
                             Cancel
                           </Button>
                         )}
-                        <Button type="submit" disabled={!settingsForm.gameType}>
+                        <Button type="submit">
                           {editingId ? 'Update' : 'Create'} Settings
                         </Button>
                       </div>
@@ -366,6 +409,50 @@ export default function RiskManagementPanel() {
                     <p className="text-muted-foreground text-sm">Game-specific settings will override global settings for the selected game.</p>
                   </CardContent>
                 </Card>
+                
+                {isLoading ? (
+                  <div>Loading settings...</div>
+                ) : (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Current Game Settings</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {riskSettings && riskSettings.length > 0 ? (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Game</TableHead>
+                              <TableHead>Max Bet</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {riskSettings.map((setting) => (
+                              <TableRow key={setting.id}>
+                                <TableCell>{setting.gameType}</TableCell>
+                                <TableCell>{setting.maxBetAmount}</TableCell>
+                                <TableCell>
+                                  <Badge variant={setting.isActive ? "default" : "secondary"}>
+                                    {setting.isActive ? 'Active' : 'Inactive'}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <Button variant="ghost" size="sm" onClick={() => handleEdit(setting)}>
+                                    Edit
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      ) : (
+                        <p className="text-muted-foreground">No game-specific settings found. Create one using the form above.</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             </TabsContent>
             
@@ -435,7 +522,7 @@ export default function RiskManagementPanel() {
                             Cancel
                           </Button>
                         )}
-                        <Button type="submit" disabled={!settingsForm.userId}>
+                        <Button type="submit">
                           {editingId ? 'Update' : 'Create'} Settings
                         </Button>
                       </div>
@@ -451,6 +538,54 @@ export default function RiskManagementPanel() {
                     <p className="text-muted-foreground text-sm">User-specific settings will override both global and game-specific settings for the specified user.</p>
                   </CardContent>
                 </Card>
+                
+                {isLoading ? (
+                  <div>Loading settings...</div>
+                ) : (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Current User Settings</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {riskSettings && riskSettings.length > 0 ? (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>User ID</TableHead>
+                              <TableHead>Max Bet</TableHead>
+                              <TableHead>Daily Limit</TableHead>
+                              <TableHead>Weekly Limit</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {riskSettings.map((setting) => (
+                              <TableRow key={setting.id}>
+                                <TableCell>{setting.userId}</TableCell>
+                                <TableCell>{setting.maxBetAmount}</TableCell>
+                                <TableCell>{setting.dailyLossLimit || 'Not set'}</TableCell>
+                                <TableCell>{setting.weeklyLossLimit || 'Not set'}</TableCell>
+                                <TableCell>
+                                  <Badge variant={setting.isActive ? "default" : "secondary"}>
+                                    {setting.isActive ? 'Active' : 'Inactive'}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <Button variant="ghost" size="sm" onClick={() => handleEdit(setting)}>
+                                    Edit
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      ) : (
+                        <p className="text-muted-foreground">No user-specific settings found. Create one using the form above.</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             </TabsContent>
           </Tabs>
