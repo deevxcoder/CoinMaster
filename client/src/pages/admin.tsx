@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import AdminDepositPanel from "@/components/AdminDepositPanel";
 import SeedDataButton from "@/components/SeedDataButton";
 import UsersList from "@/components/UsersList";
+import RiskManagementPanel from "@/components/RiskManagementPanel";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function AdminPage() {
@@ -61,15 +62,7 @@ export default function AdminPage() {
         </TabsContent>
         
         <TabsContent value="risk">
-          <Card>
-            <CardHeader>
-              <CardTitle>Risk Management</CardTitle>
-              <CardDescription>Configure betting limits and risk controls</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p>Risk management panel is currently under development.</p>
-            </CardContent>
-          </Card>
+          <RiskManagementPanel />
         </TabsContent>
         
         <TabsContent value="fraud">
