@@ -183,6 +183,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Update a user (admin only)
+  app.patch("/api/users/:id", ensureAdmin, async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const { balanceAdjustment, status, notes } = req.body;
+      
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+      
+      // Get the user to update
+      const [user] = await db.select().from(users).where(eq(users.id, userId));
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Don't allow modifying admin accounts (except by themselves)
+      if (user.isAdmin && user.id !== req.user!.id) {
+        return res.status(403).json({ message: "Cannot modify another admin account" });
+      }
+      
+      // Prepare update data
+      const updateData: any = {};
+      
+      // Update status if provided and valid
+      if (status && ["active", "suspended", "banned"].includes(status)) {
+        updateData.status = status;
+      }
+      
+      // Update notes if provided
+      if (notes !== undefined) {
+        updateData.notes = notes;
+      }
+      
+      // Update balance if adjustment is provided
+      if (balanceAdjustment !== undefined && typeof balanceAdjustment === 'number') {
+        const newBalance = user.balance + balanceAdjustment;
+        
+        // Don't allow negative balance
+        if (newBalance < 0) {
+          return res.status(400).json({ message: "Balance cannot be negative" });
+        }
+        
+        updateData.balance = newBalance;
+      }
+      
+      // Update timestamp
+      updateData.updatedAt = new Date();
+      
+      // Only update if there are changes
+      if (Object.keys(updateData).length > 0) {
+        const [updatedUser] = await db
+          .update(users)
+          .set(updateData)
+          .where(eq(users.id, userId))
+          .returning();
+        
+        // Don't send password to client
+        const { password, ...userWithoutPassword } = updatedUser;
+        
+        res.json(userWithoutPassword);
+      } else {
+        // If no changes, just return the current user
+        const { password, ...userWithoutPassword } = user;
+        res.json(userWithoutPassword);
+      }
+    } catch (error) {
+      console.error("Error updating user:", error);
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+  
   // Deposit API routes
   
   // Create a new deposit

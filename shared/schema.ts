@@ -2,6 +2,9 @@ import { pgTable, text, serial, integer, boolean, timestamp, pgEnum } from "driz
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// User account status enum
+export const userStatusEnum = pgEnum('user_status', ['active', 'suspended', 'banned']);
+
 // User schema
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -9,6 +12,11 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   balance: integer("balance").notNull().default(1500),
   isAdmin: boolean("is_admin").notNull().default(false),
+  status: userStatusEnum("status").notNull().default('active'),
+  notes: text("notes"),
+  lastLoginAt: timestamp("last_login_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
