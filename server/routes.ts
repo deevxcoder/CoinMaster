@@ -6,6 +6,7 @@ import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { setupAuth } from "./auth";
 import { db } from "./db";
+import { eq, desc } from "drizzle-orm";
 
 // Extend the Express Request type to include the user property
 interface Request extends ExpressRequest {
@@ -118,14 +119,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
       const gameType = req.query.type as string;
       
-      let games;
-      if (gameType) {
-        games = await storage.getGamesByUserAndType(req.user!.id, gameType);
-      } else {
-        games = await storage.getRecentGames(req.user!.id, limit);
+      // If user is admin and no specific game type is requested, return all games
+      if (req.user?.isAdmin && !gameType) {
+        // Get all games from database with limit
+        const allGames = await db.select()
+          .from(games)
+          .orderBy(desc(games.playedAt))
+          .limit(limit);
+        
+        return res.json(allGames);
       }
       
-      res.json(games);
+      // For regular users or when game type is specified
+      let userGames;
+      if (gameType) {
+        userGames = await storage.getGamesByUserAndType(req.user!.id, gameType);
+      } else {
+        userGames = await storage.getRecentGames(req.user!.id, limit);
+      }
+      
+      res.json(userGames);
     } catch (error) {
       console.error("Error getting games:", error);
       res.status(500).json({ message: "Failed to get games" });
@@ -149,6 +162,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error getting leaderboard:", error);
       res.status(500).json({ message: "Failed to get leaderboard" });
+    }
+  });
+  
+  // Get all users (admin only)
+  app.get("/api/users", ensureAdmin, async (req: Request, res: Response) => {
+    try {
+      const allUsers = await db.select().from(users);
+      
+      // Don't send passwords to the client
+      const usersWithoutPasswords = allUsers.map(user => {
+        const { password, ...userWithoutPassword } = user;
+        return userWithoutPassword;
+      });
+      
+      res.json(usersWithoutPasswords);
+    } catch (error) {
+      console.error("Error getting users:", error);
+      res.status(500).json({ message: "Failed to get users" });
     }
   });
   
@@ -178,8 +209,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get deposits for the current user
   app.get("/api/deposits", ensureAuthenticated, async (req: Request, res: Response) => {
     try {
-      const deposits = await storage.getDepositsByUser(req.user!.id);
-      res.json(deposits);
+      // If user is admin, return all deposits from all users
+      if (req.user?.isAdmin) {
+        // Get all deposits from database
+        const allDeposits = await db.select().from(deposits);
+        
+        // Return all deposits
+        return res.json(allDeposits);
+      }
+      
+      // For regular users, just return their own deposits
+      const userDeposits = await storage.getDepositsByUser(req.user!.id);
+      res.json(userDeposits);
     } catch (error) {
       console.error("Error getting deposits:", error);
       res.status(500).json({ message: "Failed to get deposits" });

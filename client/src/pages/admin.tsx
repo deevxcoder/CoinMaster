@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import AdminDepositPanel from "@/components/AdminDepositPanel";
 import SeedDataButton from "@/components/SeedDataButton";
+import UsersList from "@/components/UsersList";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function AdminPage() {
@@ -50,7 +51,7 @@ export default function AdminPage() {
               <CardDescription>View and manage users</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">User management functionality will be implemented in a future update.</p>
+              <UsersList />
             </CardContent>
           </Card>
         </TabsContent>
