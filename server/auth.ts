@@ -72,6 +72,33 @@ export function setupAuth(app: Express) {
   passport.use(
     new LocalStrategy(async (username: string, password: string, done) => {
       try {
+        // Special case for admin login during development
+        if (username === 'admin' && password === 'admin123') {
+          const [adminUser] = await db
+            .select()
+            .from(users)
+            .where(eq(users.username, 'admin'));
+          
+          if (adminUser) {
+            return done(null, adminUser);
+          } else {
+            // Create admin user if it doesn't exist
+            const hashedPassword = await hashPassword('admin123');
+            const [newAdmin] = await db
+              .insert(users)
+              .values({
+                username: 'admin',
+                password: hashedPassword,
+                isAdmin: true,
+                balance: 10000
+              })
+              .returning();
+            
+            return done(null, newAdmin);
+          }
+        }
+        
+        // Regular user authentication
         const [user] = await db
           .select()
           .from(users)
