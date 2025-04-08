@@ -1,10 +1,11 @@
 import express, { type Express, Request as ExpressRequest, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertGameSchema, insertDepositSchema, type User } from "@shared/schema";
+import { insertGameSchema, insertDepositSchema, type User, users, games, deposits } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { setupAuth } from "./auth";
+import { db } from "./db";
 
 // Extend the Express Request type to include the user property
 interface Request extends ExpressRequest {
@@ -23,6 +24,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return next();
     }
     res.status(401).json({ message: "Not authenticated" });
+  };
+  
+  const ensureAdmin = (req: Request, res: Response, next: NextFunction) => {
+    if (req.isAuthenticated() && req.user?.isAdmin) {
+      return next();
+    }
+    res.status(403).json({ message: "Not authorized" });
   };
 
   // Get user balance
@@ -205,6 +213,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Seed data endpoint (admin only)
+  app.post("/api/seed-data", ensureAdmin, async (req: Request, res: Response) => {
+    try {
+      // Clear existing data
+      await db.delete(games);
+      await db.delete(deposits);
+      
+      // Keep existing users but reset balances for non-admin users
+      const allUsers = await db.select().from(users);
+      for (const user of allUsers) {
+        if (!user.isAdmin) {
+          await storage.updateUserBalance(user.id, 1500); // Reset to default balance
+        }
+      }
+      
+      // Game types and results
+      const gameTypes = ['coin-toss', 'odd-even'];
+      const coinSides = ['heads', 'tails'];
+      const numberParities = ['odd', 'even'];
+      const diceResults = ['1', '2', '3', '4', '5', '6'];
+      
+      // Create 50 random games across users
+      for (let i = 0; i < 50; i++) {
+        const userId = Math.floor(Math.random() * allUsers.length) + 1;
+        const gameType = gameTypes[Math.floor(Math.random() * gameTypes.length)];
+        const betAmount = Math.floor(Math.random() * 200) + 50; // Between 50 and 250
+        
+        let playerChoice, result;
+        
+        if (gameType === 'coin-toss') {
+          playerChoice = coinSides[Math.floor(Math.random() * coinSides.length)];
+          result = coinSides[Math.floor(Math.random() * coinSides.length)];
+        } else {
+          playerChoice = numberParities[Math.floor(Math.random() * numberParities.length)];
+          const diceValue = diceResults[Math.floor(Math.random() * diceResults.length)];
+          result = diceValue;
+        }
+        
+        // Determine if the player won
+        let isWin;
+        if (gameType === 'coin-toss') {
+          isWin = playerChoice === result;
+        } else {
+          const resultIsEven = parseInt(result) % 2 === 0;
+          isWin = (playerChoice === 'even' && resultIsEven) || 
+                  (playerChoice === 'odd' && !resultIsEven);
+        }
+        
+        const payout = isWin ? betAmount * 2 : 0;
+        
+        // Calculate timestamp within last 7 days
+        const timestamp = new Date();
+        timestamp.setDate(timestamp.getDate() - Math.floor(Math.random() * 7));
+        
+        await db.insert(games).values({
+          userId,
+          gameType,
+          betAmount,
+          playerChoice,
+          result,
+          isWin,
+          payout,
+          playedAt: timestamp
+        });
+      }
+      
+      // Create 30 random deposits
+      const paymentMethods = ['upi', 'bank_transfer', 'cash'];
+      const statuses = ['pending', 'approved', 'rejected'];
+      
+      for (let i = 0; i < 30; i++) {
+        const userId = Math.floor(Math.random() * allUsers.length) + 1;
+        const amount = Math.floor(Math.random() * 1000) + 100; // Between 100 and 1100
+        const method = paymentMethods[Math.floor(Math.random() * paymentMethods.length)];
+        const status = statuses[Math.floor(Math.random() * statuses.length)];
+        
+        // Calculate timestamp within last 14 days
+        const timestamp = new Date();
+        timestamp.setDate(timestamp.getDate() - Math.floor(Math.random() * 14));
+        
+        await db.insert(deposits).values({
+          userId,
+          amount,
+          method,
+          proofInfo: `Transaction ID: TXID${Math.floor(Math.random() * 10000000)}`,
+          status,
+          adminNotes: status === 'rejected' ? 'Invalid transaction details' : '',
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          hasProofFile: Math.random() > 0.7 // 30% chance of having a proof file
+        });
+      }
+      
+      res.json({
+        success: true,
+        users: allUsers.length,
+        games: 50,
+        deposits: 30
+      });
+      
+    } catch (error) {
+      console.error("Error seeding data:", error);
+      res.status(500).json({ message: "Failed to seed data" });
+    }
+  });
+
   // Update deposit status (admin only)
   app.patch("/api/deposits/:id/status", ensureAuthenticated, async (req: Request, res: Response) => {
     try {

@@ -3,15 +3,15 @@ import { useLocation } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import AdminDepositPanel from "@/components/AdminDepositPanel";
+import SeedDataButton from "@/components/SeedDataButton";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function AdminPage() {
   const [location, navigate] = useLocation();
   const { user, isLoading } = useAuth();
   
-  // For now, we'll use a simple check to see if the user is an admin
-  // In a real app, you'd have a more robust admin check
-  const isAdmin = user?.id === 1; // Typically user ID 1 is the admin
+  // Check if the user has admin privileges
+  const isAdmin = user?.isAdmin;
   
   useEffect(() => {
     // If user is not loading and either not logged in or not admin, redirect to home
@@ -56,15 +56,27 @@ export default function AdminPage() {
         </TabsContent>
         
         <TabsContent value="stats">
-          <Card>
-            <CardHeader>
-              <CardTitle>Platform Statistics</CardTitle>
-              <CardDescription>View key metrics and statistics</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">Statistics dashboard will be implemented in a future update.</p>
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Platform Statistics</CardTitle>
+                <CardDescription>View key metrics and statistics</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">Statistics dashboard will be implemented in a future update.</p>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Demo Data</CardTitle>
+                <CardDescription>Generate sample data for testing</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <SeedDataButton />
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
