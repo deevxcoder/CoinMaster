@@ -72,11 +72,16 @@ export default function RiskManagementPanel() {
           return mockData[activeTab];
         }
         const data = await response.json();
-        // Update our mock data to match the server data
-        setMockData(prev => ({
-          ...prev,
-          [activeTab]: data
-        }));
+        console.log(`Received ${activeTab} risk settings from server:`, data);
+        
+        // Only update our mock data if we got valid data
+        if (Array.isArray(data) && data.length > 0) {
+          // Update our mock data to match the server data
+          setMockData(prev => ({
+            ...prev,
+            [activeTab]: data
+          }));
+        }
         return data;
       } catch (error) {
         console.error('Error fetching risk settings:', error);
@@ -84,8 +89,9 @@ export default function RiskManagementPanel() {
         return mockData[activeTab];
       }
     },
-    // This ensures we refetch when changing tabs
-    enabled: true
+    // This ensures we refetch when changing tabs or component mounts
+    enabled: true,
+    refetchOnMount: true
   });
   
   // Update our query when tab changes
@@ -98,19 +104,8 @@ export default function RiskManagementPanel() {
     mutationFn: async (settings: Partial<RiskSettings>) => {
       try {
         console.log('Creating settings:', settings);
-        const res = await apiRequest('POST', '/api/risk-settings', settings);
-        const data = await res.json();
         
-        // Also update our mock data store as fallback
-        setMockData(prev => ({
-          ...prev,
-          [activeTab]: [...prev[activeTab], data]
-        }));
-        
-        return data;
-      } catch (error) {
-        console.error('Error creating settings:', error);
-        // Fallback to mock implementation if API fails
+        // Update UI immediately for better UX
         const newSettings = { 
           id: Date.now(), 
           ...settings
@@ -121,18 +116,34 @@ export default function RiskManagementPanel() {
           [activeTab]: [...prev[activeTab], newSettings]
         }));
         
-        return newSettings;
+        // Make the API call
+        const res = await apiRequest('POST', '/api/risk-settings', settings);
+        const data = await res.json();
+        console.log('Create risk settings response:', data);
+        
+        return data;
+      } catch (error) {
+        console.error('Error creating settings:', error);
+        throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
         title: 'Success',
         description: 'Risk settings created successfully',
       });
-      // Force a complete refetch to get the most up-to-date data
-      setTimeout(() => {
-        refetch();
-      }, 500);
+      console.log('Create risk settings success:', data);
+      
+      // Force multiple refetches to ensure we get updated data
+      // First immediate refetch
+      refetch();
+      
+      // Second delayed refetch
+      setTimeout(async () => {
+        await refetch();
+        console.log('Refetched risk settings after create');
+      }, 1000);
+      
       resetForm();
     },
     onError: (error: Error) => {
@@ -149,10 +160,8 @@ export default function RiskManagementPanel() {
     mutationFn: async ({ id, settings }: { id: number, settings: Partial<RiskSettings> }) => {
       try {
         console.log('Updating settings:', { id, ...settings });
-        const res = await apiRequest('PATCH', `/api/risk-settings/${id}`, settings);
-        const data = await res.json();
         
-        // Also update our mock data store as fallback
+        // Update UI immediately for better UX
         setMockData(prev => {
           return {
             ...prev,
@@ -163,34 +172,35 @@ export default function RiskManagementPanel() {
             )
           };
         });
+        
+        // Make the API call
+        const res = await apiRequest('PATCH', `/api/risk-settings/${id}`, settings);
+        const data = await res.json();
+        console.log('Update risk settings response:', data);
         
         return data;
       } catch (error) {
         console.error('Error updating settings:', error);
-        // Fallback to mock implementation if API fails
-        setMockData(prev => {
-          return {
-            ...prev,
-            [activeTab]: prev[activeTab].map(item => 
-              item.id === id 
-                ? { ...item, ...settings } as RiskSettings
-                : item
-            )
-          };
-        });
-        
-        return { id, ...settings } as RiskSettings;
+        throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
         title: 'Success',
         description: 'Risk settings updated successfully',
       });
-      // Force a complete refetch to get the most up-to-date data
-      setTimeout(() => {
-        refetch();
-      }, 500);
+      console.log('Update risk settings success:', data);
+      
+      // Force multiple refetches to ensure we get updated data
+      // First immediate refetch
+      refetch();
+      
+      // Second delayed refetch
+      setTimeout(async () => {
+        await refetch();
+        console.log('Refetched risk settings after update');
+      }, 1000);
+      
       resetForm();
     },
     onError: (error: Error) => {

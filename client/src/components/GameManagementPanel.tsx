@@ -98,15 +98,23 @@ export default function GameManagementPanel() {
           return mockData;
         }
         const data = await response.json();
-        // Update our mock data to match the server data
-        setMockData(data);
+        console.log('Received game configurations from server:', data);
+        
+        // Only update our mock data if we got valid data
+        if (Array.isArray(data) && data.length > 0) {
+          // Update our mock data to match the server data
+          setMockData(data);
+        }
+        
         return data;
       } catch (error) {
         console.error('Error fetching game configurations:', error);
         // Fall back to mock data if API is not ready
         return mockData;
       }
-    }
+    },
+    // Force refetch when component mounts
+    refetchOnMount: true
   });
   
   // Create or update game configuration mutation
@@ -115,46 +123,7 @@ export default function GameManagementPanel() {
       try {
         console.log('Saving game configuration:', gameConfig);
         
-        let data;
-        
-        if (editingId && gameConfig.gameType) {
-          // Update existing game config
-          const res = await apiRequest('PATCH', `/api/game-configurations/${gameConfig.gameType}`, gameConfig);
-          data = await res.json();
-          
-          // Also update our mock data as fallback
-          setMockData(prev => 
-            prev.map(config => 
-              config.id === editingId 
-                ? { 
-                    ...config, 
-                    ...gameConfig, 
-                    updatedAt: new Date().toISOString() 
-                  } 
-                : config
-            )
-          );
-        } else {
-          // Create new game config
-          const res = await apiRequest('POST', `/api/game-configurations/${gameConfig.gameType}`, gameConfig);
-          data = await res.json();
-          
-          // Also update our mock data as fallback
-          const newConfig = {
-            id: Date.now(),
-            ...gameConfig,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          } as GameConfiguration;
-          
-          setMockData(prev => [...prev, newConfig]);
-        }
-        
-        return data;
-      } catch (error) {
-        console.error('Error saving game configuration:', error);
-        
-        // Fallback to mock implementation if API fails
+        // Update UI immediately for better UX
         if (editingId) {
           setMockData(prev => 
             prev.map(config => 
@@ -167,7 +136,6 @@ export default function GameManagementPanel() {
                 : config
             )
           );
-          return { id: editingId, ...gameConfig, updatedAt: new Date().toISOString() };
         } else {
           const newConfig = {
             id: Date.now(),
@@ -177,8 +145,28 @@ export default function GameManagementPanel() {
           } as GameConfiguration;
           
           setMockData(prev => [...prev, newConfig]);
-          return newConfig;
         }
+        
+        let data;
+        
+        if (editingId && gameConfig.gameType) {
+          // Update existing game config
+          console.log(`Updating game config for ${gameConfig.gameType}`);
+          const res = await apiRequest('PATCH', `/api/game-configurations/${gameConfig.gameType}`, gameConfig);
+          data = await res.json();
+          console.log('Update response:', data);
+        } else {
+          // Create new game config
+          console.log(`Creating new game config for ${gameConfig.gameType}`);
+          const res = await apiRequest('POST', `/api/game-configurations/${gameConfig.gameType}`, gameConfig);
+          data = await res.json();
+          console.log('Create response:', data);
+        }
+        
+        return data;
+      } catch (error) {
+        console.error('Error saving game configuration:', error);
+        throw error;
       }
     },
     onSuccess: (data) => {
@@ -189,10 +177,15 @@ export default function GameManagementPanel() {
           : 'Game configuration created successfully',
       });
       
-      // Force a complete refetch to get the most up-to-date data
-      setTimeout(() => {
-        refetch();
-      }, 500);
+      // Force multiple refetches to ensure we get updated data
+      // First immediate refetch
+      refetch();
+      
+      // Second delayed refetch
+      setTimeout(async () => {
+        await refetch();
+        console.log('Refetched game configurations after save');
+      }, 1000);
       
       resetForm();
       setActiveTab('list');
@@ -200,9 +193,10 @@ export default function GameManagementPanel() {
     onError: (error: Error) => {
       toast({
         title: 'Error',
-        description: error.message,
+        description: 'Failed to save game configuration. Please try again.',
         variant: 'destructive',
       });
+      console.error('Mutation error:', error);
     }
   });
   
@@ -335,28 +329,36 @@ export default function GameManagementPanel() {
                                   // Toggle game status between active and disabled
                                   const newStatus = game.status === 'active' ? 'disabled' : 'active';
                                   
-                                  // Try to update via API first
+                                  // Update the UI immediately for better UX
+                                  setMockData(prev =>
+                                    prev.map(config =>
+                                      config.id === game.id
+                                        ? { ...config, status: newStatus, updatedAt: new Date().toISOString() }
+                                        : config
+                                    )
+                                  );
+                                  
+                                  // Try to update via API
                                   try {
+                                    console.log(`Toggling game ${game.gameType} status to ${newStatus}`);
                                     const res = await apiRequest('PATCH', `/api/game-configurations/${game.gameType}`, {
                                       status: newStatus
                                     });
-                                    await res.json();
+                                    const data = await res.json();
+                                    console.log('Toggle response:', data);
                                   } catch (error) {
-                                    console.error('API error, falling back to mock update:', error);
-                                    // Fall back to mock update if API fails
-                                    setMockData(prev =>
-                                      prev.map(config =>
-                                        config.id === game.id
-                                          ? { ...config, status: newStatus, updatedAt: new Date().toISOString() }
-                                          : config
-                                      )
-                                    );
+                                    console.error('API error during toggle:', error);
                                   }
                                   
-                                  // Force a complete refetch to get the most up-to-date data
-                                  setTimeout(() => {
-                                    refetch();
-                                  }, 500);
+                                  // Force multiple refetches to ensure we get updated data
+                                  // First immediate refetch
+                                  await refetch();
+                                  
+                                  // Second delayed refetch
+                                  setTimeout(async () => {
+                                    await refetch();
+                                    console.log('Refetched game configurations after toggle');
+                                  }, 1000);
                                   
                                   toast({
                                     title: 'Success',
