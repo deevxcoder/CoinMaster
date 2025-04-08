@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import BetControls from "@/components/BetControls";
 import { Dice } from "@/components/ui/dice";
 import ResultModal from "@/components/ResultModal";
@@ -18,6 +18,7 @@ export default function OddEven() {
   const [isRolling, setIsRolling] = useState(false);
   const [showResult, setShowResult] = useState(false);
   const [lastGame, setLastGame] = useState<Game | null>(null);
+  const [_, setLocation] = useLocation();
   
   const { balance, updateBalance } = useBalance();
   const { refetch: refetchGameHistory } = useGameHistory({ type: 'odd-even' });
@@ -136,7 +137,8 @@ export default function OddEven() {
           onPlayAgain={handlePlayAgain}
           onCollect={() => {
             setShowResult(false);
-            window.location.href = '/';
+            // Use setLocation instead of direct href to stay in SPA mode
+            setLocation('/');
           }}
         />
       )}

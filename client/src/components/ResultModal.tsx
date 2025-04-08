@@ -83,19 +83,21 @@ export default function ResultModal({
               </>
             )}
             
-            <div className="grid grid-cols-2 gap-3">
+            <div className={`${isWin ? 'grid-cols-1' : 'grid-cols-2'} grid gap-3`}>
               <Button
                 onClick={onPlayAgain}
-                className="py-3 rounded-lg bg-primary hover:bg-opacity-80 transition-all font-semibold"
+                className={`py-3 rounded-lg ${isWin ? 'bg-amber-400 text-black' : 'bg-primary'} hover:bg-opacity-80 transition-all font-semibold ${isWin ? 'animate-pulse' : ''}`}
               >
-                {isWin ? 'Play Again' : 'Try Again'}
+                {isWin ? 'Double Your Luck?' : 'Try Again'}
               </Button>
-              <Button
-                onClick={onCollect}
-                className={`py-3 rounded-lg ${isWin ? 'bg-amber-400 text-black' : 'bg-muted'} hover:bg-opacity-80 transition-all font-semibold`}
-              >
-                {isWin ? 'Collect' : 'Back Home'}
-              </Button>
+              {!isWin && (
+                <Button
+                  onClick={onCollect}
+                  className="py-3 rounded-lg bg-muted hover:bg-opacity-80 transition-all font-semibold"
+                >
+                  Change Game
+                </Button>
+              )}
             </div>
           </motion.div>
         </AnimatePresence>

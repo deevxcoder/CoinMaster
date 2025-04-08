@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import BetControls from "@/components/BetControls";
 import { Coin } from "@/components/ui/coin";
 import ResultModal from "@/components/ResultModal";
@@ -18,6 +18,7 @@ export default function CoinToss() {
   const [isFlipping, setIsFlipping] = useState(false);
   const [showResult, setShowResult] = useState(false);
   const [lastGame, setLastGame] = useState<Game | null>(null);
+  const [_, setLocation] = useLocation();
   
   const { balance, updateBalance } = useBalance();
   const { refetch: refetchGameHistory } = useGameHistory({ type: 'coin-toss' });
@@ -133,7 +134,8 @@ export default function CoinToss() {
           onPlayAgain={handlePlayAgain}
           onCollect={() => {
             setShowResult(false);
-            window.location.href = '/';
+            // Use setLocation instead of direct href to stay in SPA mode
+            setLocation('/');
           }}
         />
       )}
