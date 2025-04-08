@@ -17,6 +17,11 @@ declare global {
       password: string;
       balance: number;
       isAdmin: boolean;
+      status: "active" | "suspended" | "banned";
+      notes: string | null;
+      lastLoginAt: Date | null;
+      createdAt: Date;
+      updatedAt: Date;
     }
   }
 }
@@ -90,7 +95,11 @@ export function setupAuth(app: Express) {
                 username: 'admin',
                 password: hashedPassword,
                 isAdmin: true,
-                balance: 10000
+                balance: 10000,
+                status: 'active',
+                notes: 'System administrator account',
+                createdAt: new Date(),
+                updatedAt: new Date()
               })
               .returning();
             
@@ -159,6 +168,10 @@ export function setupAuth(app: Express) {
           username: req.body.username,
           password: hashedPassword,
           isAdmin: isAdmin,
+          status: 'active',
+          notes: null,
+          createdAt: new Date(),
+          updatedAt: new Date()
         })
         .returning();
 

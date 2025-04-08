@@ -1,7 +1,7 @@
 import express, { type Express, Request as ExpressRequest, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertGameSchema, insertDepositSchema, type User, users, games, deposits } from "@shared/schema";
+import { insertGameSchema, insertDepositSchema, type User, users, games, deposits, userStatusEnum } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { setupAuth } from "./auth";
@@ -412,7 +412,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           amount,
           method,
           proofInfo: `Transaction ID: TXID${Math.floor(Math.random() * 10000000)}`,
-          status,
+          status: status as any, // Type assertion to handle the enum conversion
           adminNotes: status === 'rejected' ? 'Invalid transaction details' : '',
           createdAt: timestamp,
           updatedAt: timestamp,

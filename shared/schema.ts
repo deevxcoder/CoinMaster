@@ -54,7 +54,7 @@ export const deposits = pgTable("deposits", {
   proofInfo: text("proof_info").notNull(),
   hasProofFile: boolean("has_proof_file").notNull().default(false),
   proofFileUrl: text("proof_file_url"),
-  status: text("status").notNull().default('pending'), // 'pending', 'approved', 'rejected'
+  status: depositStatusEnum("status").notNull().default('pending'),
   adminNotes: text("admin_notes"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
