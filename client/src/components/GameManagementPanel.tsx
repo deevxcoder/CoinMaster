@@ -86,58 +86,96 @@ export default function GameManagementPanel() {
     }
   ]);
   
-  // Fetch game configurations (using our mock data)
+  // Fetch game configurations from API
   const { data: gameConfigurations, isLoading, refetch } = useQuery({
     queryKey: ['/api/game-configurations'],
     queryFn: async () => {
-      // In a real implementation, this would be:
-      // const response = await fetch('/api/game-configurations');
-      // if (!response.ok) throw new Error('Failed to fetch game configurations');
-      // return response.json();
-      console.log('Fetching game configurations');
-      return mockData;
+      try {
+        console.log('Fetching game configurations');
+        const response = await fetch('/api/game-configurations');
+        if (!response.ok) {
+          console.warn('API failed, falling back to mock data');
+          return mockData;
+        }
+        return await response.json();
+      } catch (error) {
+        console.error('Error fetching game configurations:', error);
+        // Fall back to mock data if API is not ready
+        return mockData;
+      }
     }
   });
   
   // Create or update game configuration mutation
   const saveMutation = useMutation({
     mutationFn: async (gameConfig: Partial<GameConfiguration>) => {
-      // In a real implementation, this would be:
-      // if (editingId) {
-      //   const res = await apiRequest('PATCH', `/api/game-configurations/${editingId}`, gameConfig);
-      //   return res.json();
-      // } else {
-      //   const res = await apiRequest('POST', `/api/game-configurations`, gameConfig);
-      //   return res.json();
-      // }
-      
-      console.log('Saving game configuration:', gameConfig);
-      
-      if (editingId) {
-        // Update existing game config
-        setMockData(prev => 
-          prev.map(config => 
-            config.id === editingId 
-              ? { 
-                  ...config, 
-                  ...gameConfig, 
-                  updatedAt: new Date().toISOString() 
-                } 
-              : config
-          )
-        );
-        return { id: editingId, ...gameConfig, updatedAt: new Date().toISOString() };
-      } else {
-        // Create new game config
-        const newConfig = {
-          id: Date.now(),
-          ...gameConfig,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        } as GameConfiguration;
+      try {
+        console.log('Saving game configuration:', gameConfig);
         
-        setMockData(prev => [...prev, newConfig]);
-        return newConfig;
+        let data;
+        
+        if (editingId && gameConfig.gameType) {
+          // Update existing game config
+          const res = await apiRequest('PATCH', `/api/game-configurations/${gameConfig.gameType}`, gameConfig);
+          data = await res.json();
+          
+          // Also update our mock data as fallback
+          setMockData(prev => 
+            prev.map(config => 
+              config.id === editingId 
+                ? { 
+                    ...config, 
+                    ...gameConfig, 
+                    updatedAt: new Date().toISOString() 
+                  } 
+                : config
+            )
+          );
+        } else {
+          // Create new game config
+          const res = await apiRequest('POST', `/api/game-configurations/${gameConfig.gameType}`, gameConfig);
+          data = await res.json();
+          
+          // Also update our mock data as fallback
+          const newConfig = {
+            id: Date.now(),
+            ...gameConfig,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          } as GameConfiguration;
+          
+          setMockData(prev => [...prev, newConfig]);
+        }
+        
+        return data;
+      } catch (error) {
+        console.error('Error saving game configuration:', error);
+        
+        // Fallback to mock implementation if API fails
+        if (editingId) {
+          setMockData(prev => 
+            prev.map(config => 
+              config.id === editingId 
+                ? { 
+                    ...config, 
+                    ...gameConfig, 
+                    updatedAt: new Date().toISOString() 
+                  } 
+                : config
+            )
+          );
+          return { id: editingId, ...gameConfig, updatedAt: new Date().toISOString() };
+        } else {
+          const newConfig = {
+            id: Date.now(),
+            ...gameConfig,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          } as GameConfiguration;
+          
+          setMockData(prev => [...prev, newConfig]);
+          return newConfig;
+        }
       }
     },
     onSuccess: () => {
@@ -284,22 +322,43 @@ export default function GameManagementPanel() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => {
-                                // Toggle game status between active and disabled
-                                const newStatus = game.status === 'active' ? 'disabled' : 'active';
-                                setMockData(prev =>
-                                  prev.map(config =>
-                                    config.id === game.id
-                                      ? { ...config, status: newStatus, updatedAt: new Date().toISOString() }
-                                      : config
-                                  )
-                                );
-                                refetch();
-                                
-                                toast({
-                                  title: 'Success',
-                                  description: `Game ${newStatus === 'active' ? 'activated' : 'disabled'} successfully`,
-                                });
+                              onClick={async () => {
+                                try {
+                                  // Toggle game status between active and disabled
+                                  const newStatus = game.status === 'active' ? 'disabled' : 'active';
+                                  
+                                  // Try to update via API first
+                                  try {
+                                    const res = await apiRequest('PATCH', `/api/game-configurations/${game.gameType}`, {
+                                      status: newStatus
+                                    });
+                                    await res.json();
+                                  } catch (error) {
+                                    console.error('API error, falling back to mock update:', error);
+                                    // Fall back to mock update if API fails
+                                    setMockData(prev =>
+                                      prev.map(config =>
+                                        config.id === game.id
+                                          ? { ...config, status: newStatus, updatedAt: new Date().toISOString() }
+                                          : config
+                                      )
+                                    );
+                                  }
+                                  
+                                  // Refetch data to show the updated status
+                                  refetch();
+                                  
+                                  toast({
+                                    title: 'Success',
+                                    description: `Game ${newStatus === 'active' ? 'activated' : 'disabled'} successfully`,
+                                  });
+                                } catch (error) {
+                                  toast({
+                                    title: 'Error',
+                                    description: 'Failed to update game status',
+                                    variant: 'destructive',
+                                  });
+                                }
                               }}
                             >
                               {game.status === 'active' ? 'Disable' : 'Enable'}

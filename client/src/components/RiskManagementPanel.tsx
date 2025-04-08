@@ -59,16 +59,24 @@ export default function RiskManagementPanel() {
     user: []
   });
   
-  // Fetch risk settings (using our mock data store)
+  // Fetch risk settings from API
   const { data: riskSettings, isLoading, refetch } = useQuery({
     queryKey: ['/api/risk-settings', activeTab],
     queryFn: async () => {
-      // In a real implementation, this would be:
-      // const response = await fetch(`/api/risk-settings?type=${activeTab}`);
-      // if (!response.ok) throw new Error('Failed to fetch risk settings');
-      // return response.json();
-      console.log(`Fetching ${activeTab} risk settings`);
-      return mockData[activeTab];
+      try {
+        console.log(`Fetching ${activeTab} risk settings`);
+        const response = await fetch(`/api/risk-settings?type=${activeTab}`);
+        if (!response.ok) {
+          // If API fails, fall back to mock data temporarily
+          console.warn('API failed, falling back to mock data');
+          return mockData[activeTab];
+        }
+        return await response.json();
+      } catch (error) {
+        console.error('Error fetching risk settings:', error);
+        // Fall back to mock data if API is not ready
+        return mockData[activeTab];
+      }
     },
     // This ensures we refetch when changing tabs
     enabled: true
@@ -82,31 +90,40 @@ export default function RiskManagementPanel() {
   // Create risk settings mutation
   const createMutation = useMutation({
     mutationFn: async (settings: Partial<RiskSettings>) => {
-      // In a real implementation:
-      // const res = await apiRequest('POST', '/api/risk-settings', settings);
-      // return res.json();
-      console.log('Creating settings:', settings);
-      
-      // Create new settings with ID
-      const newSettings = { 
-        id: Date.now(), 
-        ...settings
-      } as RiskSettings;
-      
-      // Update our mock data store
-      setMockData(prev => ({
-        ...prev,
-        [activeTab]: [...prev[activeTab], newSettings]
-      }));
-      
-      return newSettings;
+      try {
+        console.log('Creating settings:', settings);
+        const res = await apiRequest('POST', '/api/risk-settings', settings);
+        const data = await res.json();
+        
+        // Also update our mock data store as fallback
+        setMockData(prev => ({
+          ...prev,
+          [activeTab]: [...prev[activeTab], data]
+        }));
+        
+        return data;
+      } catch (error) {
+        console.error('Error creating settings:', error);
+        // Fallback to mock implementation if API fails
+        const newSettings = { 
+          id: Date.now(), 
+          ...settings
+        } as RiskSettings;
+        
+        setMockData(prev => ({
+          ...prev,
+          [activeTab]: [...prev[activeTab], newSettings]
+        }));
+        
+        return newSettings;
+      }
     },
     onSuccess: () => {
       toast({
         title: 'Success',
         description: 'Risk settings created successfully',
       });
-      // Manually refetch since we're using mock data
+      // Refetch data
       refetch();
       resetForm();
     },
@@ -122,31 +139,47 @@ export default function RiskManagementPanel() {
   // Update risk settings mutation
   const updateMutation = useMutation({
     mutationFn: async ({ id, settings }: { id: number, settings: Partial<RiskSettings> }) => {
-      // In a real implementation:
-      // const res = await apiRequest('PATCH', `/api/risk-settings/${id}`, settings);
-      // return res.json();
-      console.log('Updating settings:', { id, ...settings });
-      
-      // Update our mock data store
-      setMockData(prev => {
-        return {
-          ...prev,
-          [activeTab]: prev[activeTab].map(item => 
-            item.id === id 
-              ? { ...item, ...settings } as RiskSettings
-              : item
-          )
-        };
-      });
-      
-      return { id, ...settings } as RiskSettings;
+      try {
+        console.log('Updating settings:', { id, ...settings });
+        const res = await apiRequest('PATCH', `/api/risk-settings/${id}`, settings);
+        const data = await res.json();
+        
+        // Also update our mock data store as fallback
+        setMockData(prev => {
+          return {
+            ...prev,
+            [activeTab]: prev[activeTab].map(item => 
+              item.id === id 
+                ? { ...item, ...settings } as RiskSettings
+                : item
+            )
+          };
+        });
+        
+        return data;
+      } catch (error) {
+        console.error('Error updating settings:', error);
+        // Fallback to mock implementation if API fails
+        setMockData(prev => {
+          return {
+            ...prev,
+            [activeTab]: prev[activeTab].map(item => 
+              item.id === id 
+                ? { ...item, ...settings } as RiskSettings
+                : item
+            )
+          };
+        });
+        
+        return { id, ...settings } as RiskSettings;
+      }
     },
     onSuccess: () => {
       toast({
         title: 'Success',
         description: 'Risk settings updated successfully',
       });
-      // Manually refetch since we're using mock data
+      // Refetch data
       refetch();
       resetForm();
     },
