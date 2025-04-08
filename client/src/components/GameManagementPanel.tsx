@@ -97,7 +97,10 @@ export default function GameManagementPanel() {
           console.warn('API failed, falling back to mock data');
           return mockData;
         }
-        return await response.json();
+        const data = await response.json();
+        // Update our mock data to match the server data
+        setMockData(data);
+        return data;
       } catch (error) {
         console.error('Error fetching game configurations:', error);
         // Fall back to mock data if API is not ready
@@ -178,14 +181,19 @@ export default function GameManagementPanel() {
         }
       }
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
         title: 'Success',
         description: editingId 
           ? 'Game configuration updated successfully' 
           : 'Game configuration created successfully',
       });
-      refetch();
+      
+      // Force a complete refetch to get the most up-to-date data
+      setTimeout(() => {
+        refetch();
+      }, 500);
+      
       resetForm();
       setActiveTab('list');
     },
@@ -345,8 +353,10 @@ export default function GameManagementPanel() {
                                     );
                                   }
                                   
-                                  // Refetch data to show the updated status
-                                  refetch();
+                                  // Force a complete refetch to get the most up-to-date data
+                                  setTimeout(() => {
+                                    refetch();
+                                  }, 500);
                                   
                                   toast({
                                     title: 'Success',

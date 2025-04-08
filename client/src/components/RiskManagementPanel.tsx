@@ -71,7 +71,13 @@ export default function RiskManagementPanel() {
           console.warn('API failed, falling back to mock data');
           return mockData[activeTab];
         }
-        return await response.json();
+        const data = await response.json();
+        // Update our mock data to match the server data
+        setMockData(prev => ({
+          ...prev,
+          [activeTab]: data
+        }));
+        return data;
       } catch (error) {
         console.error('Error fetching risk settings:', error);
         // Fall back to mock data if API is not ready
@@ -123,8 +129,10 @@ export default function RiskManagementPanel() {
         title: 'Success',
         description: 'Risk settings created successfully',
       });
-      // Refetch data
-      refetch();
+      // Force a complete refetch to get the most up-to-date data
+      setTimeout(() => {
+        refetch();
+      }, 500);
       resetForm();
     },
     onError: (error: Error) => {
@@ -179,8 +187,10 @@ export default function RiskManagementPanel() {
         title: 'Success',
         description: 'Risk settings updated successfully',
       });
-      // Refetch data
-      refetch();
+      // Force a complete refetch to get the most up-to-date data
+      setTimeout(() => {
+        refetch();
+      }, 500);
       resetForm();
     },
     onError: (error: Error) => {
