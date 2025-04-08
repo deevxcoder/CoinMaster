@@ -5,10 +5,6 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import AdminDepositPanel from "@/components/AdminDepositPanel";
 import SeedDataButton from "@/components/SeedDataButton";
 import UsersList from "@/components/UsersList";
-import RiskManagementPanel from "@/components/RiskManagementPanel";
-import FraudDetectionPanel from "@/components/FraudDetectionPanel";
-import AnalyticsPanel from "@/components/AnalyticsPanel";
-import GameManagementPanel from "@/components/GameManagementPanel";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function AdminPage() {
@@ -65,19 +61,51 @@ export default function AdminPage() {
         </TabsContent>
         
         <TabsContent value="risk">
-          <RiskManagementPanel />
+          <Card>
+            <CardHeader>
+              <CardTitle>Risk Management</CardTitle>
+              <CardDescription>Configure betting limits and risk controls</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p>Risk management panel is currently under development.</p>
+            </CardContent>
+          </Card>
         </TabsContent>
         
         <TabsContent value="fraud">
-          <FraudDetectionPanel />
+          <Card>
+            <CardHeader>
+              <CardTitle>Fraud Detection</CardTitle>
+              <CardDescription>Monitor and manage suspicious activities</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p>Fraud detection panel is currently under development.</p>
+            </CardContent>
+          </Card>
         </TabsContent>
         
         <TabsContent value="analytics">
-          <AnalyticsPanel />
+          <Card>
+            <CardHeader>
+              <CardTitle>Analytics</CardTitle>
+              <CardDescription>View platform metrics and statistics</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p>Analytics panel is currently under development.</p>
+            </CardContent>
+          </Card>
         </TabsContent>
         
         <TabsContent value="games">
-          <GameManagementPanel />
+          <Card>
+            <CardHeader>
+              <CardTitle>Game Management</CardTitle>
+              <CardDescription>Configure and deploy games</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p>Game management panel is currently under development.</p>
+            </CardContent>
+          </Card>
         </TabsContent>
         
         <TabsContent value="tools">
