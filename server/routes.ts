@@ -456,6 +456,238 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to update deposit status" });
     }
   });
+  
+  // Risk Management API Routes
+  
+  // Get risk settings
+  app.get("/api/risk-settings", ensureAdmin, async (req: Request, res: Response) => {
+    try {
+      const { type, gameType, userId } = req.query;
+      
+      if (!type) {
+        return res.status(400).json({ message: "Type is required" });
+      }
+      
+      const settings = await storage.getRiskSettings(
+        type as string, 
+        gameType as string, 
+        userId ? parseInt(userId as string) : undefined
+      );
+      
+      res.json(settings);
+    } catch (error) {
+      console.error("Error getting risk settings:", error);
+      res.status(500).json({ message: "Failed to get risk settings" });
+    }
+  });
+  
+  // Create risk settings
+  app.post("/api/risk-settings", ensureAdmin, async (req: Request, res: Response) => {
+    try {
+      const settings = req.body;
+      
+      if (!settings.type || !settings.maxBetAmount) {
+        return res.status(400).json({ message: "Type and maxBetAmount are required" });
+      }
+      
+      const created = await storage.createRiskSettings(settings);
+      res.status(201).json(created);
+    } catch (error) {
+      console.error("Error creating risk settings:", error);
+      res.status(500).json({ message: "Failed to create risk settings" });
+    }
+  });
+  
+  // Update risk settings
+  app.patch("/api/risk-settings/:id", ensureAdmin, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const settings = req.body;
+      
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid ID" });
+      }
+      
+      const updated = await storage.updateRiskSettings(id, settings);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating risk settings:", error);
+      res.status(500).json({ message: "Failed to update risk settings" });
+    }
+  });
+  
+  // Activity Tracking API Routes
+  
+  // Log activity
+  app.post("/api/activity-logs", ensureAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { type, details } = req.body;
+      const userId = req.user!.id;
+      const ipAddress = req.ip;
+      const userAgent = req.headers['user-agent'];
+      
+      if (!type) {
+        return res.status(400).json({ message: "Activity type is required" });
+      }
+      
+      const log = await storage.logActivity(userId, type, ipAddress, userAgent, details);
+      res.status(201).json(log);
+    } catch (error) {
+      console.error("Error logging activity:", error);
+      res.status(500).json({ message: "Failed to log activity" });
+    }
+  });
+  
+  // Flag suspicious activity
+  app.post("/api/suspicious-activities", ensureAdmin, async (req: Request, res: Response) => {
+    try {
+      const { userId, reason, details } = req.body;
+      
+      if (!userId || !reason || !details) {
+        return res.status(400).json({ message: "User ID, reason, and details are required" });
+      }
+      
+      const activity = await storage.flagSuspiciousActivity(userId, reason, details);
+      res.status(201).json(activity);
+    } catch (error) {
+      console.error("Error flagging suspicious activity:", error);
+      res.status(500).json({ message: "Failed to flag suspicious activity" });
+    }
+  });
+  
+  // Resolve suspicious activity
+  app.patch("/api/suspicious-activities/:id", ensureAdmin, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { adminNotes } = req.body;
+      
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid ID" });
+      }
+      
+      const activity = await storage.resolveSuspiciousActivity(id, adminNotes);
+      res.json(activity);
+    } catch (error) {
+      console.error("Error resolving suspicious activity:", error);
+      res.status(500).json({ message: "Failed to resolve suspicious activity" });
+    }
+  });
+  
+  // Game Configuration API Routes
+  
+  // Get all game configurations
+  app.get("/api/game-configurations", async (req: Request, res: Response) => {
+    try {
+      const configs = await storage.getAllGameConfigurations();
+      res.json(configs);
+    } catch (error) {
+      console.error("Error getting game configurations:", error);
+      res.status(500).json({ message: "Failed to get game configurations" });
+    }
+  });
+  
+  // Get specific game configuration
+  app.get("/api/game-configurations/:type", async (req: Request, res: Response) => {
+    try {
+      const gameType = req.params.type;
+      const config = await storage.getGameConfiguration(gameType);
+      
+      if (!config) {
+        return res.status(404).json({ message: "Game configuration not found" });
+      }
+      
+      res.json(config);
+    } catch (error) {
+      console.error("Error getting game configuration:", error);
+      res.status(500).json({ message: "Failed to get game configuration" });
+    }
+  });
+  
+  // Create or update game configuration
+  app.post("/api/game-configurations/:type", ensureAdmin, async (req: Request, res: Response) => {
+    try {
+      const gameType = req.params.type;
+      const config = req.body;
+      
+      if (!config.displayName || !config.description) {
+        return res.status(400).json({ message: "Display name and description are required" });
+      }
+      
+      const result = await storage.createOrUpdateGameConfiguration(gameType, config);
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Error creating/updating game configuration:", error);
+      res.status(500).json({ message: "Failed to create/update game configuration" });
+    }
+  });
+  
+  // Analytics API Routes
+  
+  // Get game metrics
+  app.get("/api/analytics/games", ensureAdmin, async (req: Request, res: Response) => {
+    try {
+      const { period, startDate, endDate } = req.query;
+      
+      if (!period) {
+        return res.status(400).json({ message: "Period is required" });
+      }
+      
+      const metrics = await storage.getGameMetrics(
+        period as string, 
+        startDate ? new Date(startDate as string) : undefined,
+        endDate ? new Date(endDate as string) : undefined
+      );
+      
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error getting game metrics:", error);
+      res.status(500).json({ message: "Failed to get game metrics" });
+    }
+  });
+  
+  // Get financial metrics
+  app.get("/api/analytics/finances", ensureAdmin, async (req: Request, res: Response) => {
+    try {
+      const { period, startDate, endDate } = req.query;
+      
+      if (!period) {
+        return res.status(400).json({ message: "Period is required" });
+      }
+      
+      const metrics = await storage.getFinancialMetrics(
+        period as string, 
+        startDate ? new Date(startDate as string) : undefined,
+        endDate ? new Date(endDate as string) : undefined
+      );
+      
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error getting financial metrics:", error);
+      res.status(500).json({ message: "Failed to get financial metrics" });
+    }
+  });
+  
+  // Get user metrics
+  app.get("/api/analytics/users", ensureAdmin, async (req: Request, res: Response) => {
+    try {
+      const { period, startDate, endDate } = req.query;
+      
+      if (!period) {
+        return res.status(400).json({ message: "Period is required" });
+      }
+      
+      const metrics = await storage.getUserMetrics(
+        period as string, 
+        startDate ? new Date(startDate as string) : undefined,
+        endDate ? new Date(endDate as string) : undefined
+      );
+      
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error getting user metrics:", error);
+      res.status(500).json({ message: "Failed to get user metrics" });
+    }
+  });
 
   return httpServer;
 }
