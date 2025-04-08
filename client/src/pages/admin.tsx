@@ -5,6 +5,10 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import AdminDepositPanel from "@/components/AdminDepositPanel";
 import SeedDataButton from "@/components/SeedDataButton";
 import UsersList from "@/components/UsersList";
+import RiskManagementPanel from "@/components/RiskManagementPanel";
+import FraudDetectionPanel from "@/components/FraudDetectionPanel";
+import AnalyticsPanel from "@/components/AnalyticsPanel";
+import GameManagementPanel from "@/components/GameManagementPanel";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function AdminPage() {
@@ -34,10 +38,14 @@ export default function AdminPage() {
       <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
       
       <Tabs defaultValue="deposits" className="w-full">
-        <TabsList className="mb-6">
+        <TabsList className="mb-6 flex flex-wrap gap-2">
           <TabsTrigger value="deposits">Deposit Requests</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="stats">Statistics</TabsTrigger>
+          <TabsTrigger value="risk">Risk Management</TabsTrigger>
+          <TabsTrigger value="fraud">Fraud Detection</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="games">Game Management</TabsTrigger>
+          <TabsTrigger value="tools">Tools</TabsTrigger>
         </TabsList>
         
         <TabsContent value="deposits">
@@ -56,18 +64,24 @@ export default function AdminPage() {
           </Card>
         </TabsContent>
         
-        <TabsContent value="stats">
+        <TabsContent value="risk">
+          <RiskManagementPanel />
+        </TabsContent>
+        
+        <TabsContent value="fraud">
+          <FraudDetectionPanel />
+        </TabsContent>
+        
+        <TabsContent value="analytics">
+          <AnalyticsPanel />
+        </TabsContent>
+        
+        <TabsContent value="games">
+          <GameManagementPanel />
+        </TabsContent>
+        
+        <TabsContent value="tools">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Platform Statistics</CardTitle>
-                <CardDescription>View key metrics and statistics</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">Statistics dashboard will be implemented in a future update.</p>
-              </CardContent>
-            </Card>
-            
             <Card>
               <CardHeader>
                 <CardTitle>Demo Data</CardTitle>
@@ -75,6 +89,18 @@ export default function AdminPage() {
               </CardHeader>
               <CardContent>
                 <SeedDataButton />
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Database Sync</CardTitle>
+                <CardDescription>Apply schema changes to database</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Note: Database migrations are handled automatically when you restart the server.
+                </p>
               </CardContent>
             </Card>
           </div>
