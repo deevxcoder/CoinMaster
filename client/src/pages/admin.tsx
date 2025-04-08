@@ -6,6 +6,7 @@ import AdminDepositPanel from "@/components/AdminDepositPanel";
 import SeedDataButton from "@/components/SeedDataButton";
 import UsersList from "@/components/UsersList";
 import RiskManagementPanel from "@/components/RiskManagementPanel";
+import GameManagementPanel from "@/components/GameManagementPanel";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function AdminPage() {
@@ -90,15 +91,7 @@ export default function AdminPage() {
         </TabsContent>
         
         <TabsContent value="games">
-          <Card>
-            <CardHeader>
-              <CardTitle>Game Management</CardTitle>
-              <CardDescription>Configure and deploy games</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p>Game management panel is currently under development.</p>
-            </CardContent>
-          </Card>
+          <GameManagementPanel />
         </TabsContent>
         
         <TabsContent value="tools">

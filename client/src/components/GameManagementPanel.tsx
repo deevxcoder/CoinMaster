@@ -1,19 +1,20 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
-// Define types
+// Simplified interface for game configuration
 interface GameConfiguration {
   id: number;
   gameType: string;
@@ -29,71 +30,126 @@ interface GameConfiguration {
   updatedAt: string;
 }
 
+type GameStatus = 'active' | 'disabled' | 'maintenance' | 'testing';
+
 export default function GameManagementPanel() {
   const { toast } = useToast();
-  const [editingGame, setEditingGame] = useState<string | null>(null);
-  const [configForm, setConfigForm] = useState<Partial<GameConfiguration>>({
-    gameType: '',
-    displayName: '',
-    description: '',
+  const [activeTab, setActiveTab] = useState<'list' | 'create'>('list');
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [gameForm, setGameForm] = useState<Partial<GameConfiguration>>({
+    gameType: "",
+    displayName: "",
+    description: "",
     minBet: 10,
     maxBet: 1000,
-    houseEdge: 200, // 2%
-    payoutMultiplier: 200, // 2x
-    status: 'active'
+    houseEdge: 2,
+    payoutMultiplier: 1.96,
+    status: 'active',
+    customSettings: ""
   });
-  const [newGameForm, setNewGameForm] = useState({
-    gameType: '',
-    displayName: '',
-    description: '',
-    minBet: 10,
-    maxBet: 1000,
-    houseEdge: 200,
-    payoutMultiplier: 200,
-    status: 'testing',
-    gameLogic: `// Game Logic Template
-function playGame(playerChoice, betAmount) {
-  // Determine outcome
-  const result = Math.random() < 0.5 ? 'win' : 'lose';
   
-  // Calculate payout
-  const payout = result === 'win' ? betAmount * 2 : 0;
+  // Mock data for initial display
+  const [mockData, setMockData] = useState<GameConfiguration[]>([
+    {
+      id: 1,
+      gameType: "coin-toss",
+      displayName: "Coin Toss",
+      description: "A simple 50/50 game where you bet on heads or tails.",
+      minBet: 10,
+      maxBet: 1000,
+      houseEdge: 2,
+      payoutMultiplier: 1.96,
+      status: 'active',
+      customSettings: JSON.stringify({ 
+        animationSpeed: "normal",
+        soundEffects: true
+      }),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    },
+    {
+      id: 2,
+      gameType: "odd-even",
+      displayName: "Odd or Even",
+      description: "Bet on whether the number will be odd or even.",
+      minBet: 10,
+      maxBet: 1000,
+      houseEdge: 2,
+      payoutMultiplier: 1.96,
+      status: 'active',
+      customSettings: JSON.stringify({ 
+        numberRange: "1-100",
+        showHistory: true
+      }),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+  ]);
   
-  return {
-    result,
-    payout
-  };
-}`
-  });
-
-  // Fetch game configurations
-  const { 
-    data: gameConfigurations,
-    isLoading: isLoadingConfigs
-  } = useQuery({
+  // Fetch game configurations (using our mock data)
+  const { data: gameConfigurations, isLoading, refetch } = useQuery({
     queryKey: ['/api/game-configurations'],
     queryFn: async () => {
-      const response = await fetch('/api/game-configurations');
-      if (!response.ok) {
-        throw new Error('Failed to fetch game configurations');
+      // In a real implementation, this would be:
+      // const response = await fetch('/api/game-configurations');
+      // if (!response.ok) throw new Error('Failed to fetch game configurations');
+      // return response.json();
+      console.log('Fetching game configurations');
+      return mockData;
+    }
+  });
+  
+  // Create or update game configuration mutation
+  const saveMutation = useMutation({
+    mutationFn: async (gameConfig: Partial<GameConfiguration>) => {
+      // In a real implementation, this would be:
+      // if (editingId) {
+      //   const res = await apiRequest('PATCH', `/api/game-configurations/${editingId}`, gameConfig);
+      //   return res.json();
+      // } else {
+      //   const res = await apiRequest('POST', `/api/game-configurations`, gameConfig);
+      //   return res.json();
+      // }
+      
+      console.log('Saving game configuration:', gameConfig);
+      
+      if (editingId) {
+        // Update existing game config
+        setMockData(prev => 
+          prev.map(config => 
+            config.id === editingId 
+              ? { 
+                  ...config, 
+                  ...gameConfig, 
+                  updatedAt: new Date().toISOString() 
+                } 
+              : config
+          )
+        );
+        return { id: editingId, ...gameConfig, updatedAt: new Date().toISOString() };
+      } else {
+        // Create new game config
+        const newConfig = {
+          id: Date.now(),
+          ...gameConfig,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        } as GameConfiguration;
+        
+        setMockData(prev => [...prev, newConfig]);
+        return newConfig;
       }
-      return response.json();
-    }
-  });
-
-  // Update game configuration mutation
-  const updateConfigMutation = useMutation({
-    mutationFn: async (data: { gameType: string, config: Partial<GameConfiguration> }) => {
-      const res = await apiRequest('POST', `/api/game-configurations/${data.gameType}`, data.config);
-      return res.json();
     },
     onSuccess: () => {
       toast({
         title: 'Success',
-        description: 'Game configuration updated successfully',
+        description: editingId 
+          ? 'Game configuration updated successfully' 
+          : 'Game configuration created successfully',
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/game-configurations'] });
-      setEditingGame(null);
+      refetch();
+      resetForm();
+      setActiveTab('list');
     },
     onError: (error: Error) => {
       toast({
@@ -103,421 +159,306 @@ function playGame(playerChoice, betAmount) {
       });
     }
   });
-
-  // Create new game mutation
-  const createGameMutation = useMutation({
-    mutationFn: async (data: typeof newGameForm) => {
-      const res = await apiRequest('POST', `/api/game-configurations/${data.gameType}`, {
-        displayName: data.displayName,
-        description: data.description,
-        minBet: data.minBet,
-        maxBet: data.maxBet,
-        houseEdge: data.houseEdge,
-        payoutMultiplier: data.payoutMultiplier,
-        status: data.status,
-        customSettings: JSON.stringify({ gameLogic: data.gameLogic })
-      });
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: 'Success',
-        description: 'New game created successfully',
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/game-configurations'] });
-      resetNewGameForm();
-    },
-    onError: (error: Error) => {
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
-      });
-    }
-  });
-
-  const handleEdit = (gameType: string) => {
-    const game = gameConfigurations.find((g: GameConfiguration) => g.gameType === gameType);
-    if (game) {
-      setEditingGame(gameType);
-      setConfigForm({
-        gameType: game.gameType,
-        displayName: game.displayName,
-        description: game.description,
-        minBet: game.minBet,
-        maxBet: game.maxBet,
-        houseEdge: game.houseEdge,
-        payoutMultiplier: game.payoutMultiplier,
-        status: game.status,
-        customSettings: game.customSettings
-      });
-    }
+  
+  const handleChange = (
+    key: keyof GameConfiguration, 
+    value: string | number | boolean | GameStatus
+  ) => {
+    setGameForm(prev => ({ ...prev, [key]: value }));
   };
-
-  const handleConfigSubmit = (e: React.FormEvent) => {
+  
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingGame) {
-      updateConfigMutation.mutate({
-        gameType: editingGame,
-        config: configForm
-      });
-    }
-  };
-
-  const handleNewGameSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newGameForm.gameType || !newGameForm.displayName || !newGameForm.description) {
+    
+    // Validate form
+    if (!gameForm.gameType || !gameForm.displayName) {
       toast({
-        title: 'Error',
-        description: 'Game type, display name, and description are required',
+        title: 'Validation Error',
+        description: 'Game type and display name are required',
         variant: 'destructive',
       });
       return;
     }
     
-    createGameMutation.mutate(newGameForm);
+    saveMutation.mutate(gameForm);
   };
-
-  const resetNewGameForm = () => {
-    setNewGameForm({
-      gameType: '',
-      displayName: '',
-      description: '',
+  
+  const handleEditClick = (game: GameConfiguration) => {
+    setEditingId(game.id);
+    setGameForm({
+      gameType: game.gameType,
+      displayName: game.displayName,
+      description: game.description,
+      minBet: game.minBet,
+      maxBet: game.maxBet,
+      houseEdge: game.houseEdge,
+      payoutMultiplier: game.payoutMultiplier,
+      status: game.status,
+      customSettings: game.customSettings
+    });
+    setActiveTab('create');
+  };
+  
+  const resetForm = () => {
+    setEditingId(null);
+    setGameForm({
+      gameType: "",
+      displayName: "",
+      description: "",
       minBet: 10,
       maxBet: 1000,
-      houseEdge: 200,
-      payoutMultiplier: 200,
-      status: 'testing',
-      gameLogic: `// Game Logic Template
-function playGame(playerChoice, betAmount) {
-  // Determine outcome
-  const result = Math.random() < 0.5 ? 'win' : 'lose';
-  
-  // Calculate payout
-  const payout = result === 'win' ? betAmount * 2 : 0;
-  
-  return {
-    result,
-    payout
-  };
-}`
+      houseEdge: 2,
+      payoutMultiplier: 1.96,
+      status: 'active',
+      customSettings: ""
     });
   };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'success';
-      case 'maintenance':
-        return 'warning';
-      case 'testing':
-        return 'secondary';
-      case 'disabled':
-        return 'destructive';
-      default:
-        return 'default';
+  
+  const getStatusColor = (status: GameStatus) => {
+    switch(status) {
+      case 'active': return "default";
+      case 'disabled': return "secondary";
+      case 'maintenance': return "destructive";
+      case 'testing': return "outline";
+      default: return "secondary";
     }
   };
-
+  
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>Game Management</CardTitle>
-          <CardDescription>Configure and deploy games on the platform</CardDescription>
+          <CardDescription>Configure and deploy games</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Existing Games */}
-          <div>
-            <h3 className="text-lg font-medium mb-4">Current Games</h3>
-            {isLoadingConfigs ? (
-              <div>Loading game configurations...</div>
-            ) : gameConfigurations && gameConfigurations.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Game Type</TableHead>
-                    <TableHead>Display Name</TableHead>
-                    <TableHead>Min/Max Bet</TableHead>
-                    <TableHead>House Edge</TableHead>
-                    <TableHead>Payout</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {gameConfigurations.map((game: GameConfiguration) => (
-                    <TableRow key={game.id}>
-                      <TableCell>{game.gameType}</TableCell>
-                      <TableCell>{game.displayName}</TableCell>
-                      <TableCell>{game.minBet} / {game.maxBet}</TableCell>
-                      <TableCell>{(game.houseEdge / 100).toFixed(2)}%</TableCell>
-                      <TableCell>{(game.payoutMultiplier / 100).toFixed(2)}x</TableCell>
-                      <TableCell>
-                        <Badge variant={getStatusColor(game.status) as any}>
-                          {game.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => handleEdit(game.gameType)}
-                        >
-                          Configure
-                        </Button>
-                      </TableCell>
+        <CardContent>
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'list' | 'create')}>
+            <TabsList className="mb-4">
+              <TabsTrigger value="list">Game List</TabsTrigger>
+              <TabsTrigger value="create">{editingId ? 'Edit' : 'Create'} Game</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="list" className="space-y-4">
+              <div className="flex justify-end mb-4">
+                <Button onClick={() => { resetForm(); setActiveTab('create'); }}>
+                  Add New Game
+                </Button>
+              </div>
+              
+              {isLoading ? (
+                <div>Loading game configurations...</div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Display Name</TableHead>
+                      <TableHead>Min/Max Bet</TableHead>
+                      <TableHead>House Edge</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <p className="text-muted-foreground">No game configurations found.</p>
-            )}
-          </div>
-
-          <Separator />
-
-          {/* Edit Game Configuration */}
-          {editingGame && (
-            <div>
-              <h3 className="text-lg font-medium mb-4">Edit Game Configuration: {editingGame}</h3>
-              <Card>
-                <CardContent className="pt-6">
-                  <form onSubmit={handleConfigSubmit} className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="displayName">Display Name</Label>
-                        <Input 
-                          id="displayName" 
-                          value={configForm.displayName} 
-                          onChange={(e) => setConfigForm({...configForm, displayName: e.target.value})}
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="status">Status</Label>
-                        <Select 
-                          value={configForm.status} 
-                          onValueChange={(value) => setConfigForm({...configForm, status: value as any})}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="maintenance">Maintenance</SelectItem>
-                            <SelectItem value="testing">Testing</SelectItem>
-                            <SelectItem value="disabled">Disabled</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div className="space-y-2 md:col-span-2">
-                        <Label htmlFor="description">Description</Label>
-                        <Textarea 
-                          id="description" 
-                          value={configForm.description} 
-                          onChange={(e) => setConfigForm({...configForm, description: e.target.value})}
-                          rows={3}
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="minBet">Minimum Bet</Label>
-                        <Input 
-                          id="minBet" 
-                          type="number" 
-                          value={configForm.minBet} 
-                          onChange={(e) => setConfigForm({...configForm, minBet: parseInt(e.target.value)})}
-                          min={1}
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="maxBet">Maximum Bet</Label>
-                        <Input 
-                          id="maxBet" 
-                          type="number" 
-                          value={configForm.maxBet} 
-                          onChange={(e) => setConfigForm({...configForm, maxBet: parseInt(e.target.value)})}
-                          min={configForm.minBet || 1}
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="houseEdge">House Edge (%)</Label>
-                        <Input 
-                          id="houseEdge" 
-                          type="number" 
-                          value={configForm.houseEdge ? (configForm.houseEdge / 100) : ''} 
-                          onChange={(e) => setConfigForm({...configForm, houseEdge: Math.round(parseFloat(e.target.value) * 100)})}
-                          step={0.01}
-                          min={0}
-                          max={100}
-                        />
-                        <p className="text-xs text-muted-foreground">Enter percentage (e.g., 2 for 2%)</p>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="payoutMultiplier">Payout Multiplier</Label>
-                        <Input 
-                          id="payoutMultiplier" 
-                          type="number" 
-                          value={configForm.payoutMultiplier ? (configForm.payoutMultiplier / 100) : ''} 
-                          onChange={(e) => setConfigForm({...configForm, payoutMultiplier: Math.round(parseFloat(e.target.value) * 100)})}
-                          step={0.01}
-                          min={1}
-                        />
-                        <p className="text-xs text-muted-foreground">Enter multiplier (e.g., 2 for 2x)</p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex justify-end space-x-2 pt-4">
-                      <Button type="button" variant="outline" onClick={() => setEditingGame(null)}>
-                        Cancel
-                      </Button>
-                      <Button type="submit" disabled={updateConfigMutation.isPending}>
-                        Update Configuration
-                      </Button>
-                    </div>
-                  </form>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          <Separator />
-
-          {/* New Game Form */}
-          <div>
-            <h3 className="text-lg font-medium mb-4">Add New Game</h3>
-            <Card>
-              <CardContent className="pt-6">
-                <form onSubmit={handleNewGameSubmit} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  </TableHeader>
+                  <TableBody>
+                    {gameConfigurations && gameConfigurations.length > 0 ? (
+                      gameConfigurations.map((game) => (
+                        <TableRow key={game.id}>
+                          <TableCell className="font-medium">{game.gameType}</TableCell>
+                          <TableCell>{game.displayName}</TableCell>
+                          <TableCell>{game.minBet} / {game.maxBet}</TableCell>
+                          <TableCell>{game.houseEdge}%</TableCell>
+                          <TableCell>
+                            <Badge variant={getStatusColor(game.status)}>
+                              {game.status.charAt(0).toUpperCase() + game.status.slice(1)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => handleEditClick(game)}
+                              className="mr-2"
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                // Toggle game status between active and disabled
+                                const newStatus = game.status === 'active' ? 'disabled' : 'active';
+                                setMockData(prev =>
+                                  prev.map(config =>
+                                    config.id === game.id
+                                      ? { ...config, status: newStatus, updatedAt: new Date().toISOString() }
+                                      : config
+                                  )
+                                );
+                                refetch();
+                                
+                                toast({
+                                  title: 'Success',
+                                  description: `Game ${newStatus === 'active' ? 'activated' : 'disabled'} successfully`,
+                                });
+                              }}
+                            >
+                              {game.status === 'active' ? 'Disable' : 'Enable'}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center">
+                          No game configurations found
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="create" className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="newGameType">Game Type (ID)</Label>
-                      <Input 
-                        id="newGameType" 
-                        value={newGameForm.gameType} 
-                        onChange={(e) => setNewGameForm({...newGameForm, gameType: e.target.value})}
-                        placeholder="e.g., blackjack"
-                      />
-                      <p className="text-xs text-muted-foreground">Unique identifier for the game (no spaces)</p>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="newDisplayName">Display Name</Label>
-                      <Input 
-                        id="newDisplayName" 
-                        value={newGameForm.displayName} 
-                        onChange={(e) => setNewGameForm({...newGameForm, displayName: e.target.value})}
-                        placeholder="e.g., Blackjack"
+                      <Label htmlFor="gameType">Game Type (Identifier)</Label>
+                      <Input
+                        id="gameType"
+                        placeholder="e.g., coin-toss, odd-even"
+                        value={gameForm.gameType}
+                        onChange={(e) => handleChange('gameType', e.target.value)}
+                        disabled={!!editingId} // Can't change game type when editing
                       />
                     </div>
                     
-                    <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor="newDescription">Description</Label>
-                      <Textarea 
-                        id="newDescription" 
-                        value={newGameForm.description} 
-                        onChange={(e) => setNewGameForm({...newGameForm, description: e.target.value})}
-                        placeholder="Describe the game for players"
+                    <div className="space-y-2">
+                      <Label htmlFor="displayName">Display Name</Label>
+                      <Input
+                        id="displayName"
+                        placeholder="e.g., Coin Toss, Odd or Even"
+                        value={gameForm.displayName}
+                        onChange={(e) => handleChange('displayName', e.target.value)}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="description">Description</Label>
+                      <Textarea
+                        id="description"
+                        placeholder="Describe the game rules and how to play"
+                        value={gameForm.description}
+                        onChange={(e) => handleChange('description', e.target.value)}
                         rows={3}
                       />
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="newMinBet">Minimum Bet</Label>
-                      <Input 
-                        id="newMinBet" 
-                        type="number" 
-                        value={newGameForm.minBet} 
-                        onChange={(e) => setNewGameForm({...newGameForm, minBet: parseInt(e.target.value)})}
-                        min={1}
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="newMaxBet">Maximum Bet</Label>
-                      <Input 
-                        id="newMaxBet" 
-                        type="number" 
-                        value={newGameForm.maxBet} 
-                        onChange={(e) => setNewGameForm({...newGameForm, maxBet: parseInt(e.target.value)})}
-                        min={newGameForm.minBet}
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="newHouseEdge">House Edge (%)</Label>
-                      <Input 
-                        id="newHouseEdge" 
-                        type="number" 
-                        value={newGameForm.houseEdge / 100} 
-                        onChange={(e) => setNewGameForm({...newGameForm, houseEdge: Math.round(parseFloat(e.target.value) * 100)})}
-                        step={0.01}
-                        min={0}
-                        max={100}
-                      />
-                      <p className="text-xs text-muted-foreground">Enter percentage (e.g., 2 for 2%)</p>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="newPayoutMultiplier">Payout Multiplier</Label>
-                      <Input 
-                        id="newPayoutMultiplier" 
-                        type="number" 
-                        value={newGameForm.payoutMultiplier / 100} 
-                        onChange={(e) => setNewGameForm({...newGameForm, payoutMultiplier: Math.round(parseFloat(e.target.value) * 100)})}
-                        step={0.01}
-                        min={1}
-                      />
-                      <p className="text-xs text-muted-foreground">Enter multiplier (e.g., 2 for 2x)</p>
-                    </div>
-                    
-                    <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor="newGameLogic">Game Logic (JavaScript)</Label>
-                      <Textarea 
-                        id="newGameLogic" 
-                        value={newGameForm.gameLogic} 
-                        onChange={(e) => setNewGameForm({...newGameForm, gameLogic: e.target.value})}
-                        rows={10}
-                        className="font-mono text-sm"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Define the game logic in JavaScript. This will be stored as custom settings.
-                      </p>
-                    </div>
-                    
-                    <div className="space-y-2 md:col-span-2 flex items-center space-x-2">
-                      <Switch 
-                        id="testMode" 
-                        checked={newGameForm.status === 'testing'} 
-                        onCheckedChange={(checked) => setNewGameForm({...newGameForm, status: checked ? 'testing' : 'active'})}
-                      />
-                      <Label htmlFor="testMode">Create in Test Mode</Label>
+                      <Label htmlFor="status">Status</Label>
+                      <Select 
+                        value={gameForm.status} 
+                        onValueChange={(v) => handleChange('status', v as GameStatus)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="disabled">Disabled</SelectItem>
+                          <SelectItem value="maintenance">Maintenance</SelectItem>
+                          <SelectItem value="testing">Testing</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                   
-                  <div className="flex justify-end space-x-2 pt-4">
-                    <Button type="button" variant="outline" onClick={resetNewGameForm}>
-                      Reset
-                    </Button>
-                    <Button type="submit" disabled={createGameMutation.isPending}>
-                      Create Game
-                    </Button>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="minBet">Minimum Bet</Label>
+                      <Input
+                        id="minBet"
+                        type="number"
+                        value={gameForm.minBet}
+                        onChange={(e) => handleChange('minBet', parseInt(e.target.value))}
+                        min={1}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="maxBet">Maximum Bet</Label>
+                      <Input
+                        id="maxBet"
+                        type="number"
+                        value={gameForm.maxBet}
+                        onChange={(e) => handleChange('maxBet', parseInt(e.target.value))}
+                        min={gameForm.minBet || 1}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="houseEdge">House Edge (%)</Label>
+                      <div className="flex items-center gap-2">
+                        <Slider
+                          id="houseEdge"
+                          value={[gameForm.houseEdge || 2]}
+                          onValueChange={(values) => handleChange('houseEdge', values[0])}
+                          min={0}
+                          max={10}
+                          step={0.1}
+                          className="flex-1"
+                        />
+                        <span className="w-12 text-right">{gameForm.houseEdge}%</span>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="payoutMultiplier">Payout Multiplier</Label>
+                      <Input
+                        id="payoutMultiplier"
+                        type="number"
+                        value={gameForm.payoutMultiplier}
+                        onChange={(e) => handleChange('payoutMultiplier', parseFloat(e.target.value))}
+                        min={1}
+                        step={0.01}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        For a house edge of {gameForm.houseEdge}%, a fair multiplier would be around {(100 / (100 - (gameForm.houseEdge || 0))).toFixed(2)}x
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="customSettings">Custom Settings (JSON)</Label>
+                      <Textarea
+                        id="customSettings"
+                        placeholder='{"animationSpeed": "normal", "soundEffects": true}'
+                        value={gameForm.customSettings}
+                        onChange={(e) => handleChange('customSettings', e.target.value)}
+                        rows={3}
+                      />
+                    </div>
                   </div>
-                </form>
-              </CardContent>
-              <CardFooter className="bg-muted/50">
-                <p className="text-sm text-muted-foreground">
-                  Note: After creating a game, you'll need to implement the frontend components to integrate it with the platform.
-                </p>
-              </CardFooter>
-            </Card>
-          </div>
+                </div>
+                
+                <div className="flex justify-end space-x-2">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => {
+                      resetForm();
+                      setActiveTab('list');
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={saveMutation.isPending}>
+                    {editingId ? 'Update' : 'Create'} Game
+                  </Button>
+                </div>
+              </form>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>
