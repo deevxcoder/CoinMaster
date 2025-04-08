@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, pgEnum } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -33,14 +33,47 @@ export const insertGameSchema = createInsertSchema(games).omit({
   playedAt: true
 });
 
+// Define deposit status enum
+export const depositStatusEnum = pgEnum('deposit_status', ['pending', 'approved', 'rejected']);
+
+// Define deposit table
+export const deposits = pgTable("deposits", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  amount: integer("amount").notNull(),
+  method: text("method").notNull(), // 'upi', 'bank_transfer', 'cash'
+  proofInfo: text("proof_info").notNull(),
+  hasProofFile: boolean("has_proof_file").notNull().default(false),
+  proofFileUrl: text("proof_file_url"),
+  status: text("status").notNull().default('pending'), // 'pending', 'approved', 'rejected'
+  adminNotes: text("admin_notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertDepositSchema = createInsertSchema(deposits).omit({
+  id: true,
+  userId: true,
+  proofFileUrl: true,
+  adminNotes: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Game = typeof games.$inferSelect;
 export type InsertGame = z.infer<typeof insertGameSchema>;
+export type Deposit = typeof deposits.$inferSelect;
+export type InsertDeposit = z.infer<typeof insertDepositSchema>;
 
 // Game-specific types
 export type GameType = 'coin-toss' | 'odd-even';
 export type CoinSide = 'heads' | 'tails';
 export type NumberParity = 'odd' | 'even';
 export type PlayerChoice = CoinSide | NumberParity;
+
+// Payment types
+export type PaymentMethod = 'upi' | 'bank_transfer' | 'cash';
+export type DepositStatus = 'pending' | 'approved' | 'rejected';

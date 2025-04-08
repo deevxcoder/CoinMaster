@@ -1,6 +1,7 @@
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 type ResultModalProps = {
   isWin: boolean;
@@ -17,9 +18,18 @@ export default function ResultModal({
   onPlayAgain,
   onCollect
 }: ResultModalProps) {
+  const title = isWin ? "You Won!" : "You Lost!";
+  
   return (
     <Dialog defaultOpen={true}>
       <DialogContent className="w-[90%] max-w-md bg-card rounded-xl p-6 shadow-lg border border-gray-700">
+        <DialogTitle className="sr-only">
+          {title}
+        </DialogTitle>
+        <DialogDescription className="sr-only">
+          {message}
+        </DialogDescription>
+        
         <AnimatePresence>
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -38,7 +48,7 @@ export default function ResultModal({
                 >
                   <i className="fas fa-trophy text-4xl text-amber-400"></i>
                 </motion.div>
-                <h3 className="font-accent font-bold text-2xl mb-2 text-amber-400">You Won!</h3>
+                <h3 className="font-accent font-bold text-2xl mb-2 text-amber-400">{title}</h3>
                 <motion.p 
                   className="text-3xl font-bold mb-4"
                   initial={{ scale: 0.8 }}
@@ -60,7 +70,7 @@ export default function ResultModal({
                 >
                   <i className="fas fa-times text-4xl text-red-500"></i>
                 </motion.div>
-                <h3 className="font-accent font-bold text-2xl mb-2 text-red-500">You Lost!</h3>
+                <h3 className="font-accent font-bold text-2xl mb-2 text-red-500">{title}</h3>
                 <motion.p 
                   className="text-3xl font-bold mb-4"
                   initial={{ opacity: 0 }}

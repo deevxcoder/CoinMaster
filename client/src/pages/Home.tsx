@@ -4,10 +4,13 @@ import { useBalance } from "@/hooks/use-balance";
 import { useGameHistory } from "@/hooks/use-game-history";
 import { formatDistanceToNow } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
+import Leaderboard from "@/components/Leaderboard";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Home() {
   const { balance } = useBalance();
   const { data: games } = useGameHistory({ limit: 10 });
+  const { user } = useAuth();
 
   const stats = useQuery({
     queryKey: ['/api/stats'],
@@ -42,14 +45,28 @@ export default function Home() {
 
   return (
     <div className="slide-up">
-      <div className="flex flex-col md:flex-row gap-6 mb-8">
-        <div className="flex-1 rounded-xl bg-card p-6 relative overflow-hidden gradient-border">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div className="lg:col-span-2 rounded-xl bg-card p-6 relative overflow-hidden gradient-border">
           <div className="relative z-10">
-            <h2 className="font-accent font-bold text-2xl mb-3">Welcome Back</h2>
+            <h2 className="font-accent font-bold text-2xl mb-3">Welcome Back, {user?.username}</h2>
             <p className="text-gray-300 mb-4">Ready to test your luck? Choose a game to start playing and win big!</p>
-            <div className="flex space-x-3">
-              <button className="px-5 py-2 bg-primary rounded-full font-semibold hover:bg-opacity-80 transition-all">Play Now</button>
-              <button className="px-5 py-2 bg-muted rounded-full font-semibold hover:bg-opacity-80 transition-all">History</button>
+            <div className="grid grid-cols-2 gap-4 mt-6">
+              <div className="p-3 rounded-lg bg-muted">
+                <p className="text-gray-400 text-sm">Total Winnings</p>
+                <p className="font-semibold text-amber-400 text-xl">{stats.data?.totalWinnings ?? 0}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-muted">
+                <p className="text-gray-400 text-sm">Win Rate</p>
+                <p className="font-semibold text-secondary text-xl">{stats.data?.winRate ?? 0}%</p>
+              </div>
+              <div className="p-3 rounded-lg bg-muted">
+                <p className="text-gray-400 text-sm">Games Played</p>
+                <p className="font-semibold text-white text-xl">{stats.data?.gamesPlayed ?? 0}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-muted">
+                <p className="text-gray-400 text-sm">Best Win</p>
+                <p className="font-semibold text-green-500 text-xl">{stats.data?.bestWin ?? 0}</p>
+              </div>
             </div>
           </div>
           <div className="absolute top-0 right-0 h-full w-1/2 opacity-10">
@@ -68,26 +85,10 @@ export default function Home() {
             </svg>
           </div>
         </div>
-        <div className="flex-1 rounded-xl bg-card p-6 gradient-border">
-          <h2 className="font-accent font-bold text-2xl mb-3">Quick Stats</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="p-3 rounded-lg bg-muted">
-              <p className="text-gray-400 text-sm">Total Winnings</p>
-              <p className="font-semibold text-amber-400 text-xl">{stats.data?.totalWinnings ?? 0}</p>
-            </div>
-            <div className="p-3 rounded-lg bg-muted">
-              <p className="text-gray-400 text-sm">Win Rate</p>
-              <p className="font-semibold text-secondary text-xl">{stats.data?.winRate ?? 0}%</p>
-            </div>
-            <div className="p-3 rounded-lg bg-muted">
-              <p className="text-gray-400 text-sm">Games Played</p>
-              <p className="font-semibold text-white text-xl">{stats.data?.gamesPlayed ?? 0}</p>
-            </div>
-            <div className="p-3 rounded-lg bg-muted">
-              <p className="text-gray-400 text-sm">Best Win</p>
-              <p className="font-semibold text-green-500 text-xl">{stats.data?.bestWin ?? 0}</p>
-            </div>
-          </div>
+        
+        {/* Leaderboard */}
+        <div className="h-full">
+          <Leaderboard />
         </div>
       </div>
 
